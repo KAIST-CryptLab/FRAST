@@ -1,8 +1,10 @@
 use aligned_vec::CACHELINE_ALIGN;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use dyn_stack::ReborrowMut;
-use frast::{keygen::*, pbs::*, expand_glwe::*, ggsw_conv::*, utils::*, Frast, MODULUS, MODULUS_BIT, FRAST_PARAM, FRAST_HE_PARAM1, PARAM_ONLINE};
+use frast::{expand_glwe::*, gen_all_auto_keys, ggsw_conv::*, keygen::*, pbs::*, utils::*, FftType, Frast, FRAST_HE_PARAM1, FRAST_PARAM, MODULUS, MODULUS_BIT, PARAM_ONLINE};
 use rand::Rng;
+#[cfg(feature = "multithread")]
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use tfhe::core_crypto::{prelude::{*, polynomial_algorithms::*}, fft_impl::fft64::{c64, crypto::{ggsw::cmux, bootstrap::FourierLweBootstrapKeyView}}};
 
 fn criterion_benchmark(c: &mut Criterion) {
@@ -100,9 +102,10 @@ fn criterion_benchmark(c: &mut Criterion) {
     let fourier_ggsw_key = fourier_ggsw_key.as_view();
 
     // Set rotation keys
-    let all_ksk = gen_all_subs_ksk(
+    let all_ksk = gen_all_auto_keys(
         subs_decomp_base_log,
         subs_decomp_level_count,
+        FftType::Split(39),
         &glwe_secret_key,
         param.glwe_modular_std_dev,
         &mut encryption_generator,
@@ -208,9 +211,9 @@ fn criterion_benchmark(c: &mut Criterion) {
         for k in 0..ggsw_bit_decomp_level_count.0 {
             let expanded_glwe_list_idx = (i / param.polynomial_size.0) * ggsw_bit_decomp_level_count.0 + k;
             let coeff_idx = i % param.polynomial_size.0;
-            glwe_clone_from(
-                glev.get_mut(k),
-                vec_expanded_glwe_list[expanded_glwe_list_idx].get(coeff_idx),
+            glwe_ciphertext_clone_from(
+                &mut glev.get_mut(k),
+                &vec_expanded_glwe_list[expanded_glwe_list_idx].get(coeff_idx),
             );
         }
     }
@@ -755,6 +758,8 @@ fn par_eval_round_expanding_part(
     fourier_bsk: FourierLweBootstrapKeyView,
     fourier_ggsw_bits_list: &[FourierGgswCiphertext<&[c64]>],
 ) {
+    use rayon::iter::IntoParallelRefIterator;
+
     let polynomial_size = fourier_bsk.polynomial_size();
     let ciphertext_modulus = he_state[0].ciphertext_modulus();
     let sbox = (0..MODULUS).map(|i| sbox[i] as usize).collect::<Vec<usize>>();
@@ -1038,6 +1043,7 @@ fn bit_decompose_keystream_to_online(
     he_keystream_bits
 }
 
+#[allow(unused)]
 #[cfg(feature = "multithread")]
 fn par_bit_decompose_keystream(
     he_state: &Vec<LWE>,
@@ -1046,6 +1052,8 @@ fn par_bit_decompose_keystream(
     num_branches: usize,
     modulus_sup: usize,
 ) -> LweCiphertextListOwned<u64> {
+    use rayon::iter::IntoParallelRefIterator;
+
     let mut he_keystream_bits = LweCiphertextList::new(0u64, he_state[0].lwe_size(), LweCiphertextCount(MODULUS_BIT * num_branches), he_state[0].ciphertext_modulus());
 
     he_keystream_bits.par_chunks_exact_mut(MODULUS_BIT)

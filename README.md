@@ -1,6 +1,10 @@
 # FRAST
 This is an implementation of the FRAST cipher (proposed in [FRAST: TFHE-friendly Cipher Based on Random S-boxes](https://eprint.iacr.org/2024/745)) using TFHE-rs library.
 
+## Updates
+* 24.11.15. The setup phase of FRAST is optimized by the split FFT ([https://eprint.iacr.org/2024/1318](https://eprint.iacr.org/2024/1318))
+* 24.08.19. The first version from the FRAST paper ([https://eprint.iarc.org/2024/745](https://eprint.iacr.org/2024/745))
+
 ## Tests
 There are two tests: 'negacyclic_dbr' and 'frast'.
 * 'negacyclic_dbr': test for evaluating double blind rotation

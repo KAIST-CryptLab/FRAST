@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
+use aligned_vec::ABox;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use frast::{utils::*, keygen::*, expand_glwe::*, ggsw_conv::*, Frast, MODULUS, MODULUS_BIT, FRAST_PARAM, FRAST_HE_PARAM1};
+use frast::{expand_glwe::*, gen_all_auto_keys, ggsw_conv::*, keygen::*, utils::*, AutomorphKey, FftType, Frast, FRAST_HE_PARAM1, FRAST_PARAM, MODULUS, MODULUS_BIT};
 use rand::Rng;
 use tfhe::core_crypto::{prelude::*, fft_impl::fft64::c64};
 #[cfg(feature = "multithread")]
@@ -60,9 +61,10 @@ fn criterion_benchmark(c: &mut Criterion) {
     let fourier_ggsw_key = fourier_ggsw_key.as_view();
 
     // Set rotation keys
-    let all_ksk = gen_all_subs_ksk(
+    let all_ksk = gen_all_auto_keys(
         subs_decomp_base_log,
         subs_decomp_level_count,
+        FftType::Split(39),
         &glwe_secret_key,
         param.glwe_modular_std_dev,
         &mut encryption_generator,
@@ -127,7 +129,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
 fn setup(
     vec_glwe_list: &Vec<GlweCiphertextList<Vec<u64>>>,
-    all_ksk: &HashMap<usize, GLWEKeyswitchKey<u64>>,
+    all_ksk: &HashMap<usize, AutomorphKey<ABox<[c64]>>>,
     fourier_ggsw_key: &FourierGgswCiphertextList<&[c64]>,
     num_round_key_bits: usize,
     ggsw_bit_decomp_base_log: DecompositionBaseLog,
@@ -169,9 +171,9 @@ fn setup(
         for k in 0..ggsw_bit_decomp_level_count.0 {
             let expanded_glwe_list_idx = (i / polynomial_size.0) * ggsw_bit_decomp_level_count.0 + k;
             let coeff_idx = i % polynomial_size.0;
-            glwe_clone_from(
-                glev.get_mut(k),
-                vec_expanded_glwe_list[expanded_glwe_list_idx].get(coeff_idx),
+            glwe_ciphertext_clone_from(
+                &mut glev.get_mut(k),
+                &vec_expanded_glwe_list[expanded_glwe_list_idx].get(coeff_idx),
             );
         }
     }
@@ -207,7 +209,7 @@ fn setup(
 
 criterion_group!{
     name = benches;
-    config = Criterion::default().sample_size(10);
+    config = Criterion::default().sample_size(100);
     targets = criterion_benchmark
 }
 criterion_main!(benches);

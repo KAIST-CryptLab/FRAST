@@ -6,7 +6,7 @@ use rand::Rng;
 use tfhe::core_crypto::prelude::*;
 use tfhe::core_crypto::algorithms::polynomial_algorithms::*;
 use tfhe::core_crypto::fft_impl::fft64::{c64, crypto::ggsw::cmux};
-use frast::{MODULUS, MODULUS_BIT, FRAST_HE_PARAM1};
+use frast::{gen_all_auto_keys, FftType, FRAST_HE_PARAM1, MODULUS, MODULUS_BIT};
 use frast::{utils::*, keygen::*, expand_glwe::*, ggsw_conv::*, pbs::*};
 
 fn main() {
@@ -86,9 +86,10 @@ fn main() {
     );
     let fourier_ggsw_key = fourier_ggsw_key.as_view();
 
-    let all_ksk = gen_all_subs_ksk(
+    let all_ksk = gen_all_auto_keys(
         subs_decomp_base_log,
         subs_decomp_level_count,
+        FftType::Split(39),
         &glwe_secret_key,
         param.glwe_modular_std_dev,
         &mut encryption_generator,
@@ -150,9 +151,9 @@ fn main() {
         for k in 0..ggsw_bit_decomp_level_count.0 {
             let expanded_glwe_list_idx = (i / param.polynomial_size.0) * ggsw_bit_decomp_level_count.0 + k;
             let coeff_idx = i % param.polynomial_size.0;
-            glwe_clone_from(
-                glev.get_mut(k),
-                vec_expanded_glwe_list[expanded_glwe_list_idx].get(coeff_idx),
+            glwe_ciphertext_clone_from(
+                &mut glev.get_mut(k),
+                &vec_expanded_glwe_list[expanded_glwe_list_idx].get(coeff_idx),
             );
         }
     }

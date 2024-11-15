@@ -126,7 +126,7 @@ where
             for (mut glwe_mask, fourier_ggsw) in glwe_mask_list.iter_mut().zip(fourier_ggsw_key.as_view().into_ggsw_iter()) {
                 add_external_product_assign(&mut glwe_mask, &fourier_ggsw, &glwe_bit)
             }
-            glwe_clone_from(glwe_body_list.get_mut(0).as_mut_view(), glwe_bit.as_view());
+            glwe_ciphertext_clone_from(&mut glwe_body_list.get_mut(0), &glwe_bit);
         }
     }
     #[cfg(feature = "multithread")]
@@ -138,7 +138,7 @@ where
             for (mut glwe_mask, fourier_ggsw) in glwe_mask_list.iter_mut().zip(fourier_ggsw_key.as_view().into_ggsw_iter()) {
                 add_external_product_assign(&mut glwe_mask, &fourier_ggsw, &glwe_bit)
             }
-            glwe_clone_from(glwe_body_list.get_mut(0).as_mut_view(), glwe_bit.as_view());
+            glwe_ciphertext_clone_from(&mut glwe_body_list.get_mut(0), &glwe_bit.as_view());
         }
     });
 
